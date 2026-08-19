@@ -34,10 +34,12 @@ async def ingest_file(file: UploadFile = File(...), doc_id: str = Form(None)):
 def query(req: QueryRequest):
     # 1) embed query
     q_emb = embedder.embed([req.query])[0]
+    
     # 2) retrieve top_k
     results = collection.query(query_embeddings=[q_emb], n_results=req.top_k)
     retrieved_docs = results["documents"][0]  # list of strings
     retrieved_meta = results.get("metadatas", [[]])[0]
+
     # 3) build context
     context_parts = []
     for i, d in enumerate(retrieved_docs):
@@ -45,6 +47,7 @@ def query(req: QueryRequest):
         source = meta.get("source", "unknown")
         context_parts.append(f"Source: {source}\n\n{d}")
     context = "\n\n---\n\n".join(context_parts)
+
     # 4) call Ollama
     system_msg = {"role": "system", "content": "You are a helpful assistant. Use the provided context to answer the question and cite sources."}
     user_msg = {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {req.query}"}
